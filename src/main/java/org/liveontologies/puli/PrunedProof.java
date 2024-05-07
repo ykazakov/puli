@@ -26,28 +26,39 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
-public class PrunedProof<I extends Inference<?>>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+class PrunedProof<I extends AxiomPinpointingInference<?, ?>>
 		extends DelegatingProof<I, Proof<? extends I>>
-		implements Proof<I>, Producer<I> {
+		implements Proof<I>, Consumer<I> {
+	
+	private static final Logger LOGGER_ = LoggerFactory
+			.getLogger(PrunedProof.class);
 
-	private final Map<Object, I> expanded_ = new HashMap<Object, I>();
+	private final Map<Object, I> essentialInferences_ = new HashMap<Object, I>();
 
 	public PrunedProof(Proof<? extends I> delegate, Object goal) {
 		super(delegate);
-		Set<Object> essential = Proofs.getEssentialConclusions(delegate, goal);
-		Proofs.expand(essential, Proofs.removeAssertedInferences(delegate),
+		Set<Object> essential = Proofs.getEssentialAxioms(delegate, goal);
+		LOGGER_.trace("Essential axioms: " + essential);
+		Proofs.expand(essential,
+				Proofs.filter(delegate,
+						inf -> essential.containsAll(inf.getJustification())),
 				goal, this);
 	}
 
 	@Override
-	public void produce(I inf) {
-		expanded_.put(inf.getConclusion(), inf);
+	public void accept(I inf) {
+		LOGGER_.trace("Essential inference: " + inf);
+		essentialInferences_.put(inf.getConclusion(), inf);
 	}
 
 	@Override
 	public Collection<? extends I> getInferences(Object conclusion) {
-		I inf = expanded_.get(conclusion);
+		I inf = essentialInferences_.get(conclusion);
 		if (inf == null) {
 			return super.getInferences(conclusion);
 		}

@@ -25,12 +25,14 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 
 class InferenceExpander<C, I extends Inference<? extends C>>
-		implements Producer<I> {
+		implements Predicate<I> {
 
 	private final Set<C> derivable_;
 
@@ -43,20 +45,20 @@ class InferenceExpander<C, I extends Inference<? extends C>>
 
 	private final Queue<C> newlyDerived_ = new ArrayDeque<C>();
 
-	private final Producer<? super I> producer_;
+	private final Consumer<? super I> applied_;
 
 	InferenceExpander(Set<C> derivable, Proof<? extends I> proof, C goal,
-			Producer<? super I> producer) {
+			Consumer<? super I> applied) {
 		this.proof_ = proof;
 		this.derivable_ = derivable;
-		this.producer_ = producer;
+		this.applied_ = applied;
 		process(goal);
 	}
 
 	public static <C, I extends Inference<? extends C>> void expand(
 			Set<C> derivable, Proof<? extends I> proof, C goal,
-			Producer<? super I> producer) {
-		new InferenceExpander<C, I>(derivable, proof, goal, producer);
+			Consumer<? super I> applied) {
+		new InferenceExpander<C, I>(derivable, proof, goal, applied);
 	}
 
 	void process(C goal) {
@@ -64,23 +66,24 @@ class InferenceExpander<C, I extends Inference<? extends C>>
 	}
 
 	@Override
-	public void produce(I inf) {
+	public boolean test(I inf) {
 		List<? extends C> premises = inf.getPremises();
 		for (int i = 0; i < premises.size(); i++) {
 			C premise = premises.get(i);
 			if (!derivable_.contains(premise)) {
 				watchInferences_.put(premise, inf);
 				watchPositions_.put(premise, i);
-				return;
+				return true;
 			}
 		}
 		// all premises are derived
 		C conclusion = inf.getConclusion();
 		if (derivable_.add(conclusion)) {
-			producer_.produce(inf);
+			applied_.accept(inf);
 			newlyDerived_.add(conclusion);
 			propagate();
 		}
+		return true;
 	}
 
 	void propagate() {
@@ -101,7 +104,7 @@ class InferenceExpander<C, I extends Inference<? extends C>>
 						// all premises are derived
 						C conclusion = inf.getConclusion();
 						if (derivable_.add(conclusion)) {
-							producer_.produce(inf);
+							applied_.accept(inf);
 							newlyDerived_.add(conclusion);
 						}
 						break;

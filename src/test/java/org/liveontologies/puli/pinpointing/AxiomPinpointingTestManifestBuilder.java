@@ -1,5 +1,7 @@
 package org.liveontologies.puli.pinpointing;
 
+import java.util.ArrayList;
+
 /*-
  * #%L
  * Proof Utility Library
@@ -23,8 +25,10 @@ package org.liveontologies.puli.pinpointing;
  */
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.liveontologies.puli.AbstractBuilder;
@@ -48,7 +52,7 @@ public abstract class AxiomPinpointingTestManifestBuilder<Q, A, I extends AxiomP
 
 	private TestInputManifest<Q, A, I> input_;
 
-	private Set<Set<? extends A>> justifications_, repairs_;
+	private List<Set<? extends A>> justifications_, repairs_;
 	private Set<A> usefulAxioms_;
 
 	protected AxiomPinpointingTestManifestBuilder() {
@@ -75,7 +79,7 @@ public abstract class AxiomPinpointingTestManifestBuilder<Q, A, I extends AxiomP
 	public AxiomPinpointingTestManifestBuilder<Q, A, I> justification(
 			A... axioms) {
 		if (justifications_ == null) {
-			justifications_ = new HashSet<>();
+			justifications_ = new ArrayList<>();
 		}
 		justifications_.add(new HashSet<>(Arrays.asList(axioms)));
 		addUsefulAxioms(axioms);
@@ -91,7 +95,7 @@ public abstract class AxiomPinpointingTestManifestBuilder<Q, A, I extends AxiomP
 	@SuppressWarnings("unchecked")
 	public AxiomPinpointingTestManifestBuilder<Q, A, I> repair(A... axioms) {
 		if (repairs_ == null) {
-			repairs_ = new HashSet<>();
+			repairs_ = new ArrayList<>();
 		}
 		repairs_.add(new HashSet<>(Arrays.asList(axioms)));
 		addUsefulAxioms(axioms);
@@ -140,18 +144,18 @@ public abstract class AxiomPinpointingTestManifestBuilder<Q, A, I extends AxiomP
 	}
 
 	@Override
-	public Set<? extends Set<? extends A>> getJustifications() {
+	public Collection<? extends Set<? extends A>> getJustifications() {
 		if (justifications_ == null && repairs_ != null) {
-			justifications_ = new HashSet<>(
+			justifications_ = new ArrayList<>(
 					MinimalHittingSetEnumerator.compute(repairs_));
 		}
 		return justifications_;
 	}
 
 	@Override
-	public Set<? extends Set<? extends A>> getRepairs() {
+	public Collection<? extends Set<? extends A>> getRepairs() {
 		if (repairs_ == null && justifications_ != null) {
-			repairs_ = new HashSet<>(
+			repairs_ = new ArrayList<>(
 					MinimalHittingSetEnumerator.compute(justifications_));
 		}
 		return repairs_;

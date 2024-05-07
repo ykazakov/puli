@@ -19,26 +19,22 @@
  * limitations under the License.
  * #L%
  */
-package org.liveontologies.puli;
+package org.liveontologies.puli.pinpointing.input.repairs;
 
-import java.util.Collection;
+import org.liveontologies.puli.pinpointing.BaseAxiomPinpointingTestInput;
+import org.liveontologies.puli.pinpointing.input.ComplexCycle1;
 
-/**
- * An object from which one can retrieve inferences deriving conclusions.
- * 
- * @author Yevgeny Kazakov
- *
- * @param <I>
- *            the type of inferences provided by this proof
- */
-public interface Proof<I extends Inference<?>> {
+public class ComplexCycle1Repairs extends BaseAxiomPinpointingTestInput {
 
-	// TODO: switch to stream
-	
-	/**
-	 * @param conclusion
-	 * @return the inferences from this proof that derive the given conclusion
-	 */
-	Collection<? extends I> getInferences(Object conclusion);
+	@Override
+	protected void build() {
+		input(new ComplexCycle1());
+
+		repair(1, 2);
+		repair(7, 8);
+		repair(1, 7);
+		repair(2, 3, 8);
+
+	}
 
 }

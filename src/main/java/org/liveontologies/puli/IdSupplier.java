@@ -1,10 +1,12 @@
+package org.liveontologies.puli;
+
 /*-
  * #%L
  * Proof Utility Library
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2014 - 2017 Live Ontologies Project
+ * Copyright (C) 2014 - 2023 Live Ontologies Project
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +21,31 @@
  * limitations under the License.
  * #L%
  */
-package org.liveontologies.puli;
 
-public class ProofNodeDerivabilityChecker
-		extends InferenceDerivabilityChecker<ProofNode<?>, ProofStep<?>> {
+/**
+ * Obtaining fresh integer identifiers starting from 1
+ * 
+ * @author Yevgeny Kazakov
+ *
+ */
+public class IdSupplier {
 
-	public ProofNodeDerivabilityChecker() {
-		super(ProofNodeProof.get());
+	private int lastId_ = 0;
+
+	/**
+	 * @return the next fresh integer identifier; it is guaranteed that this
+	 *         identifier was not returned by the previous calls of the method
+	 */
+	public int getNextId() {
+		return ++lastId_;
+	}
+
+	/**
+	 * @return the identifier provided by the last call of {@link #getNextId()}
+	 *         or {@code 0} if no identifier was returned so far
+	 */
+	public int getLastId() {
+		return lastId_;
 	}
 
 }

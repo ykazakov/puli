@@ -1,10 +1,12 @@
+package org.liveontologies.puli;
+
 /*-
  * #%L
  * Proof Utility Library
  * $Id:$
  * $HeadURL:$
  * %%
- * Copyright (C) 2014 - 2017 Live Ontologies Project
+ * Copyright (C) 2014 - 2023 Live Ontologies Project
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,18 +21,11 @@
  * limitations under the License.
  * #L%
  */
-package org.liveontologies.puli;
 
-class DerivableFromProofStep<C> extends DerivableProofStep<C> {
+public interface AxiomListener<A> {
 
-	DerivableFromProofStep(ProofStep<C> delegate,
-			DerivabilityChecker<ProofNode<?>, ProofStep<?>> checker) {
-		super(delegate, checker);
-	}
+	void axiomAdded(A axiom);
 
-	@Override
-	protected DerivableFromProofNode<C> convert(ProofNode<C> premise) {
-		return new DerivableFromProofNode<C>(premise, getDerivabilityChecker());
-	}
+	void axiomRemoved(A axiom);
 
 }

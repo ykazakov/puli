@@ -23,15 +23,22 @@ package org.liveontologies.puli;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.Sets;
 
 /**
  * A collection of static methods for working with {@link Proof}s
@@ -66,10 +73,27 @@ public class Proofs {
 	 *         as premises only conclusions that appear before in this sequence.
 	 */
 	public static boolean isDerivable(Proof<?> proof, Object conclusion) {
-		return new InferenceDerivabilityChecker<Object, Inference<?>>(proof)
-				.isDerivable(conclusion);
-		// alternatively:
-		// return ProofNodes.isDerivable(ProofNodes.create(proof, conclusion));
+		return getDerivabilityChecker(proof).isDerivable(conclusion);
+	}
+
+	public static DerivabilityChecker<?> getDerivabilityChecker(
+			Proof<?> proof) {
+		return new DerivabilityCheckerUP<>(
+				transform(proof, inf -> justifyByEmpty(inf)));
+	}
+
+	public static boolean isDerivableFrom(Proof<? extends Object> proof,
+			Object conclusion, Set<?> assertedConclusions) {
+		return ProofNodes.isDerivable(ProofNodes.addAssertedInferences(
+				ProofNodes.create(proof, conclusion), assertedConclusions));
+	}
+
+	public static <C> Proof<AssertedConclusionInference<C>> create(
+			Stream<? extends C> asserted) {
+		ModifiableProof<AssertedConclusionInference<C>> proof = new BaseProof<>();
+		asserted.map(AssertedConclusionInference<C>::new)
+				.forEach(proof::produce);
+		return proof;
 	}
 
 	/**
@@ -98,26 +122,34 @@ public class Proofs {
 	/**
 	 * @param proof
 	 * @return the {@link Proof} that has all inferences of the given
-	 *         {@link Proof} except for the asserted inferences, i.e., all
-	 *         inferences for which {@link Inferences#isAsserted(Inference)}
-	 *         returns {@code true}.
+	 *         {@link Proof} except for inferences with non-empty justification.
+	 * @see AxiomPinpointingInference#getJustification()
 	 */
-	public static <I extends Inference<?>> Proof<I> removeAssertedInferences(
+	public static <I extends AxiomPinpointingInference<?, ?>> Proof<I> filterJustifiedInferences(
 			final Proof<? extends I> proof) {
-		return removeAssertedInferences(proof, Collections.emptySet());
+		return filter(proof, inf -> inf.getJustification().isEmpty());
 	}
 
 	/**
 	 * @param proof
-	 * @param assertedConclusions
+	 * @param filter
+	 *            a predicate determining if the inference should be kept in the
+	 *            resulting proof
 	 * @return the {@link Proof} that has all inferences of the given
-	 *         {@link Proof} except for the asserted inferences (inferences for
-	 *         which {@link Inferences#isAsserted(Inference)} returns
-	 *         {@code true}), whose conclusions are not in the given set.
+	 *         {@link Proof} except for inferences for which the predicate
+	 *         returns false
 	 */
-	public static <I extends Inference<?>> Proof<I> removeAssertedInferences(
-			final Proof<? extends I> proof, final Set<?> assertedConclusions) {
-		return new RemoveAssertedProof<I>(proof, assertedConclusions);
+	public static <I extends Inference<?>> Proof<I> filter(
+			final Proof<? extends I> proof, final Predicate<? super I> filter) {
+		return new Proof<I>() {
+
+			@Override
+			public Collection<? extends I> getInferences(Object conclusion) {
+				return proof.getInferences(conclusion).stream().filter(filter)
+						.collect(Collectors.toList());
+			}
+
+		};
 	}
 
 	public static <I extends Inference<?>, J extends Inference<?>> Proof<J> transform(
@@ -132,6 +164,32 @@ public class Proofs {
 		};
 	}
 
+	public static <A, I extends AxiomPinpointingInference<?, ? extends A>> Proof<I> filterJustified(
+			Proof<? extends I> proof, Predicate<? super A> include) {
+		return Proofs.filter(proof,
+				inf -> inf.getJustification().stream().allMatch(include));
+	}
+
+	static <C> AxiomPinpointingInference<C, C> justifyByConclusion(
+			Inference<? extends C> inf) {
+		return new AxiomPinpointingInferenceAdapter<C, C>(inf) {
+			@Override
+			public Set<? extends C> getJustification() {
+				return Collections.singleton(inf.getConclusion());
+			};
+		};
+	}
+
+	public static <C, A> AxiomPinpointingInference<C, A> justifyByEmpty(
+			Inference<? extends C> inf) {
+		return new AxiomPinpointingInferenceAdapter<C, A>(inf) {
+			@Override
+			public Set<? extends A> getJustification() {
+				return Collections.emptySet();
+			};
+		};
+	}
+
 	public static <C> AxiomPinpointingInference<C, C> justifyAsserted(
 			Inference<? extends C> inf) {
 		return new AssertedAxiomPinpointingInferenceAdapter<>(inf);
@@ -139,15 +197,7 @@ public class Proofs {
 
 	public static <C> Proof<AxiomPinpointingInference<C, C>> justifyAsserted(
 			Proof<? extends Inference<? extends C>> proof) {
-		return transform(proof,
-				new Function<Inference<? extends C>, AxiomPinpointingInference<C, C>>() {
-
-					@Override
-					public AxiomPinpointingInference<C, C> apply(
-							Inference<? extends C> inference) {
-						return justifyAsserted(inference);
-					}
-				});
+		return transform(proof, Proofs::justifyAsserted);
 	}
 
 	/**
@@ -174,68 +224,46 @@ public class Proofs {
 	/**
 	 * Recursively enumerates all inferences of the given {@link Proof} starting
 	 * from the inferences for the given goal conclusion and then proceeding to
-	 * the inferences of their premises. The encountered inferences are reported
-	 * using the provided {@link Producer} by calling {@link Producer#produce}.
-	 * The inferences for each conclusion are enumerated only once even if the
-	 * conclusion appears as premise in several inferences.
+	 * the inferences of their premises. The encountered inferences are
+	 * processed using the provided {@link Consumer}. The inferences for each
+	 * conclusion are enumerated only once even if the conclusion appears as
+	 * premise in several inferences.
 	 * 
 	 * @param proof
 	 * @param goal
-	 * @param producer
+	 * @param follow
 	 * @return the set of all conclusions for which the inferences were
 	 *         enumerated
 	 */
+	public static <T, I extends Inference<? extends T>> Set<T> unfoldRecursively(
+			Proof<I> proof, T goal, Predicate<? super I> follow) {
+		return Proofs.<T, I> unfoldRecursively(proof, goal, follow,
+				new HashSet<>());
+	}
+
 	public static <C, I extends Inference<? extends C>> Set<C> unfoldRecursively(
-			Proof<? extends I> proof, C goal, Producer<? super I> producer) {
-		Set<C> result = new HashSet<C>();
-		Queue<C> toExpand = new ArrayDeque<C>();
-		result.add(goal);
+			Proof<I> proof, C goal, Predicate<? super I> follow,
+			Set<C> result) {
+		if (!result.add(goal)) {
+			return result;
+		}
+		Queue<C> toExpand = new ArrayDeque<>();
 		toExpand.add(goal);
 		for (;;) {
 			C next = toExpand.poll();
 			if (next == null) {
-				break;
+				return result;
 			}
 			for (I inf : proof.getInferences(next)) {
-				producer.produce(inf);
-				for (C premise : inf.getPremises()) {
-					if (result.add(premise)) {
-						toExpand.add(premise);
+				if (follow.test(inf)) {
+					for (C premise : inf.getPremises()) {
+						if (result.add(premise)) {
+							toExpand.add(premise);
+						}
 					}
 				}
 			}
 		}
-		return result;
-	}
-
-	public static <C, I extends Inference<? extends C>> Set<C> unfoldTopologically(
-			Proof<? extends I> proof, C goal, Producer<? super I> producer) {
-		Set<C> result = new HashSet<C>();
-		Deque<C> toExpand = new ArrayDeque<C>();
-		result.add(goal);
-		toExpand.add(goal);
-		for (;;) {
-			C next = toExpand.peekFirst();
-			if (next == null) {
-				break;
-			}
-			boolean expanded = true;
-			for (I inf : proof.getInferences(next)) {
-				for (C premise : inf.getPremises()) {
-					if (result.add(premise)) {
-						toExpand.addFirst(premise);
-						expanded = false;
-					}
-				}
-			}
-			if (expanded) {
-				toExpand.removeFirst();
-				for (I inf : proof.getInferences(next)) {
-					producer.produce(inf);
-				}
-			}
-		}
-		return result;
 	}
 
 	/**
@@ -246,11 +274,9 @@ public class Proofs {
 	 */
 	public static int countInferences(Proof<?> proof, Object goal) {
 		final int[] counter = { 0 };
-		unfoldRecursively(proof, goal, new Producer<Inference<?>>() {
-			@Override
-			public void produce(Inference<?> object) {
-				counter[0]++;
-			}
+		unfoldRecursively(proof, goal, inf -> {
+			counter[0]++;
+			return true;
 		});
 		return counter[0];
 	}
@@ -259,21 +285,29 @@ public class Proofs {
 	 * @param proof
 	 * @param goal
 	 * @return the set of conclusions without which the goal would not be
-	 *         derivable using the given inferences; i.e., every derivation
-	 *         using the inferences must use every essential conclusion
+	 *         derivable using the proof inferences; i.e., every derivation
+	 *         using the inferences must use every essential axiom
 	 */
-	public static <C, I extends Inference<? extends C>> Set<C> getEssentialConclusions(
-			Proof<I> proof, C goal) {
-		Set<C> result = new HashSet<C>();
-		DerivabilityCheckerWithBlocking<C, I> checker = new InferenceDerivabilityChecker<C, I>(
+	public static <A, I extends AxiomPinpointingInference<?, ? extends A>> Set<A> getEssentialAxioms(
+			Proof<I> proof, Object goal) {
+		Set<A> result = new HashSet<>();
+		IncrementalDerivabilityChecker<A, I> checker = new DerivabilityCheckerUP<>(
 				proof);
-		for (C candidate : unfoldRecursively(proof, goal,
-				Producer.Dummy.<I> get())) {
-			checker.block(candidate);
+		List<A> axioms = new ArrayList<>();
+		unfoldRecursively(proof, goal, inf -> {
+			inf.getJustification().forEach(ax -> {
+				if (checker.addAxiom(ax)) {
+					axioms.add(ax);
+				}
+			});
+			return true;
+		});
+		for (A axiom : axioms) {
+			checker.removeAxiom(axiom);
 			if (!checker.isDerivable(goal)) {
-				result.add(candidate);
+				result.add(axiom);
 			}
-			checker.unblock(candidate);
+			checker.addAxiom(axiom);
 		}
 		return result;
 	}
@@ -281,17 +315,70 @@ public class Proofs {
 	/**
 	 * Adds to the set of conclusions all conclusions that are derived from them
 	 * using the inferences of the given proof that can be used for proving the
-	 * given goal; produces the applied inferences using the given producer
+	 * given goal; produces the applied inferences using the given consumer
 	 * 
 	 * @param derivable
 	 * @param proof
 	 * @param goal
-	 * @param producer
+	 * @param applied
 	 */
 	public static <C, I extends Inference<? extends C>> void expand(
 			Set<C> derivable, Proof<? extends I> proof, C goal,
-			Producer<? super I> producer) {
-		InferenceExpander.<C, I> expand(derivable, proof, goal, producer);
+			Consumer<? super I> applied) {
+		InferenceExpander.<C, I> expand(derivable, proof, goal, applied);
+	}
+
+	/**
+	 * Verifies that the inferences of the given proof for deriving the given
+	 * are not cyclic. A set of inferences is cyclic if every inference in this
+	 * set has at least one premise that is a conclusion of some inference in
+	 * this set.
+	 * 
+	 * @param <C>
+	 * @param <I>
+	 * @param proof
+	 * @param goal
+	 * @param derived
+	 *            a consumer which receives the notification about the derived
+	 *            conclusions of this proof: each notified conclusion is derived
+	 *            by some proof inference whose premises were notified by this
+	 *            consumer before; each derived conclusion receives at most one
+	 *            notification; if the proof is acyclic and derives the goal,
+	 *            the last conclusion notified by the consumer will be goal 
+	 * 
+	 * @return {@code null} if the set of the proof inferences is not cyclic, or
+	 *         the set of conclusions containing the goal such that each element
+	 *         in this set is a conclusion of some proof inference that contains
+	 *         a premise from this set (the set of these inferences is cyclic).
+	 */
+	public static <C, I extends Inference<? extends C>> Set<C> checkAcyclicity(
+			Proof<I> proof, C goal, Consumer<? super C> derived) {
+		Deque<C> dfs = new ArrayDeque<>();
+		dfs.add(goal);
+		Set<C> expanded = Sets.newHashSet();
+		Set<C> path = Sets.newHashSet();
+		for (;;) {
+			C next = dfs.peekLast();
+			if (next == null) {
+				return null;
+			}			
+			if (expanded.add(next)) {
+				path.add(next);
+				for (I inf : proof.getInferences(next)) {
+					for (C c : inf.getPremises()) {
+						if (path.contains(c)) {
+							return path; // cycle on the path!
+						}
+						dfs.addLast(c);
+					}
+				}
+			} else {				
+				dfs.removeLast();
+				if (path.remove(next)) {
+					derived.accept(next);
+				}
+			}
+		}
 	}
 
 	/**
@@ -306,7 +393,7 @@ public class Proofs {
 	 *         returned proof
 	 * @see Inferences#isAsserted(Inference)
 	 */
-	public static <I extends Inference<?>> Proof<I> prune(
+	public static <I extends AxiomPinpointingInference<?, ?>> Proof<I> prune(
 			Proof<? extends I> proof, Object goal) {
 		return new PrunedProof<I>(proof, goal);
 	}
@@ -317,16 +404,9 @@ public class Proofs {
 	 * @param prover
 	 * @return a prover returning pruned proofs of the given prover
 	 */
-	public static <Q, I extends Inference<?>> Prover<Q, I> prune(
+	public static <Q, I extends AxiomPinpointingInference<?, ?>> Prover<Q, I> prune(
 			Prover<? super Q, ? extends I> prover) {
-		return new Prover<Q, I>() {
-
-			@Override
-			public Proof<? extends I> getProof(Q query) {
-				return prune(prover.getProof(query), query);
-			}
-
-		};
+		return query -> prune(prover.getProof(query), query);
 	}
 
 	/**
@@ -337,10 +417,9 @@ public class Proofs {
 	 * the same conclusion is labeled by {@code *}.
 	 * 
 	 * @param proof
-	 *                  the {@link Proof} from which to take the inferences
+	 *            the {@link Proof} from which to take the inferences
 	 * @param goal
-	 *                  the conclusion starting from which the inferences are
-	 *                  printed
+	 *            the conclusion starting from which the inferences are printed
 	 */
 	public static void print(Proof<?> proof, Object goal) {
 		try {

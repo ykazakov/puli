@@ -25,7 +25,7 @@ package org.liveontologies.puli;
 import java.util.Set;
 
 /**
- * A inference justified by a set of axioms
+ * An inference justified by a set of axioms
  * 
  * @author Yevgeny Kazakov
  *

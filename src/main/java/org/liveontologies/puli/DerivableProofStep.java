@@ -21,26 +21,34 @@
  */
 package org.liveontologies.puli;
 
+import java.util.Collections;
+import java.util.Set;
+
 import com.google.common.base.Preconditions;
 
-class DerivableProofStep<C> extends ConvertedProofStep<C> {
+class DerivableProofStep<C> extends ConvertedProofStep<C>
+		implements AxiomPinpointingInference<ProofNode<C>, Void> {
 
-	private final DerivabilityChecker<ProofNode<?>, ProofStep<?>> checker_;
+	private final DerivabilityChecker<?> checker_;
 
-	DerivableProofStep(ProofStep<C> delegate,
-			DerivabilityChecker<ProofNode<?>, ProofStep<?>> checker) {
+	DerivableProofStep(ProofStep<C> delegate, DerivabilityChecker<?> checker) {
 		super(delegate);
 		Preconditions.checkNotNull(checker);
 		this.checker_ = checker;
 	}
 
-	DerivabilityChecker<ProofNode<?>, ProofStep<?>> getDerivabilityChecker() {
+	DerivabilityChecker<?> getDerivabilityChecker() {
 		return checker_;
 	}
 
 	@Override
 	protected DerivableProofNode<C> convert(ProofNode<C> premise) {
 		return new DerivableProofNode<C>(premise, checker_);
+	}
+
+	@Override
+	public Set<? extends Void> getJustification() {
+		return Collections.emptySet();
 	}
 
 }
