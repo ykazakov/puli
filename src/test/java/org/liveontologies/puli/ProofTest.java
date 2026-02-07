@@ -420,7 +420,8 @@ public class ProofTest {
 			IncrementalDerivabilityChecker<?, ? extends AxiomPinpointingInference<?, ? extends A>> checker,
 			Object goal, Predicate<A> isAxiom) {
 		assertDerivable(checker, goal);
-		assertJustified(checker.explainIsDerivable(goal), goal, isAxiom);
+		Proof<? extends AxiomPinpointingInference<?, ? extends A>> proof = checker.explainIsDerivable(goal);
+		assertJustified(proof, goal, isAxiom);
 	}
 
 }
