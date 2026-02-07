@@ -35,7 +35,7 @@ the Sonatype OSSRH snapshot repository either to your `pom.xml` or `settings.xml
 
 ## License
 
-Proof Utility Library is Copyright (c) 2014 - 2024 Live Ontologies Project
+Proof Utility Library is Copyright (c) 2014 - 2026 Live Ontologies Project
 
 All sources of this project are available under the terms of the 
 [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)
