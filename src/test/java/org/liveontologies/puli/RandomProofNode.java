@@ -36,8 +36,8 @@ public class RandomProofNode {
 		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
 		for (int i = 0; i < maxInferences; i++) {
 			int conclusion = random.nextInt(maxConclusions);
-			 ProofBuilder<Integer, ?, ?>.ProofInferenceBuilder ib = b
-					 .conclusion((Integer) conclusion);
+			  ProofBuilder<Integer, ?, ?>.ProofInferenceBuilder ib = b
+					.conclusion(conclusion);
 			int noPremises = random.nextInt(maxPremises);
 			if (derived.size() < noPremises) {
 				noPremises = derived.size();

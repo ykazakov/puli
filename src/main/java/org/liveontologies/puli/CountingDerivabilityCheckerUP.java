@@ -121,7 +121,7 @@ public class CountingDerivabilityCheckerUP<A, I extends AxiomPinpointingInferenc
 
 	@Override
 	public Proof<? extends I> getProof() {
-		return this.proof_;
+		return this.proof_; // TODO: filter out inferences that are not justified
 	}
 
 	private int clashCount_ = 0;

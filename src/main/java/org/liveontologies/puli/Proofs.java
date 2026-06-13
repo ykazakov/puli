@@ -133,8 +133,8 @@ public class Proofs {
 	/**
 	 * @param proof
 	 * @param filter
-	 *            a predicate determining if the inference should be kept in the
-	 *            resulting proof
+	 *                   a predicate determining if the inference should be kept
+	 *                   in the resulting proof
 	 * @return the {@link Proof} that has all inferences of the given
 	 *         {@link Proof} except for inferences for which the predicate
 	 *         returns false
@@ -243,25 +243,61 @@ public class Proofs {
 
 	public static <C, I extends Inference<? extends C>> Set<C> unfoldRecursively(
 			Proof<I> proof, C goal, Predicate<? super I> follow,
-			Set<C> result) {
-		if (!result.add(goal)) {
-			return result;
+			Set<C> unfolded) {
+		if (!unfolded.add(goal)) {
+			return unfolded;
 		}
-		Queue<C> toExpand = new ArrayDeque<>();
-		toExpand.add(goal);
+		Queue<C> toDo = new ArrayDeque<>();
+		toDo.add(goal);
 		for (;;) {
-			C next = toExpand.poll();
+			C next = toDo.poll();
 			if (next == null) {
-				return result;
+				return unfolded;
 			}
 			for (I inf : proof.getInferences(next)) {
 				if (follow.test(inf)) {
 					for (C premise : inf.getPremises()) {
-						if (result.add(premise)) {
-							toExpand.add(premise);
+						if (unfolded.add(premise)) {
+							toDo.add(premise);
 						}
 					}
 				}
+			}
+		}
+	}
+
+	public static <C, I extends Inference<? extends C>> Set<C> unfoldDFS(
+			Proof<I> proof, C goal, Predicate<? super I> follow,
+			Consumer<? super C> notifyExpanded) {
+		return unfoldDFS(proof, goal, follow, notifyExpanded, new HashSet<>());
+	}
+
+	public static <C, I extends Inference<? extends C>> Set<C> unfoldDFS(
+			Proof<I> proof, C goal, Predicate<? super I> follow,
+			Consumer<? super C> notifyExpanded, Set<C> visited) {
+		if (!visited.add(goal)) {
+			return visited;
+		}
+		Deque<C> toDo = new ArrayDeque<>();
+		Set<C> expanded = new HashSet<>();
+		toDo.add(goal);
+		for (;;) {
+			C next = toDo.peek();
+			if (next == null) {
+				return visited;
+			}
+			if (expanded.add(next)) {
+				for (I inf : proof.getInferences(next)) {
+					if (follow.test(inf)) {
+						for (C premise : inf.getPremises()) {
+							if (visited.add(premise)) {
+								toDo.push(premise);
+							}
+						}
+					}
+				}
+			} else {
+				notifyExpanded.accept(toDo.pop());
 			}
 		}
 	}
@@ -339,12 +375,13 @@ public class Proofs {
 	 * @param proof
 	 * @param goal
 	 * @param derived
-	 *            a consumer which receives the notification about the derived
-	 *            conclusions of this proof: each notified conclusion is derived
-	 *            by some proof inference whose premises were notified by this
-	 *            consumer before; each derived conclusion receives at most one
-	 *            notification; if the proof is acyclic and derives the goal,
-	 *            the last conclusion notified by the consumer will be goal 
+	 *                    a consumer which receives the notification about the
+	 *                    derived conclusions of this proof: each notified
+	 *                    conclusion is derived by some proof inference whose
+	 *                    premises were notified by this consumer before; each
+	 *                    derived conclusion receives at most one notification;
+	 *                    if the proof is acyclic and derives the goal, the last
+	 *                    conclusion notified by the consumer will be goal
 	 * 
 	 * @return {@code null} if the set of the proof inferences is not cyclic, or
 	 *         the set of conclusions containing the goal such that each element
@@ -361,7 +398,7 @@ public class Proofs {
 			C next = dfs.peekLast();
 			if (next == null) {
 				return null;
-			}			
+			}
 			if (expanded.add(next)) {
 				path.add(next);
 				for (I inf : proof.getInferences(next)) {
@@ -372,7 +409,7 @@ public class Proofs {
 						dfs.addLast(c);
 					}
 				}
-			} else {				
+			} else {
 				dfs.removeLast();
 				if (path.remove(next)) {
 					derived.accept(next);
@@ -417,9 +454,10 @@ public class Proofs {
 	 * the same conclusion is labeled by {@code *}.
 	 * 
 	 * @param proof
-	 *            the {@link Proof} from which to take the inferences
+	 *                  the {@link Proof} from which to take the inferences
 	 * @param goal
-	 *            the conclusion starting from which the inferences are printed
+	 *                  the conclusion starting from which the inferences are
+	 *                  printed
 	 */
 	public static void print(Proof<?> proof, Object goal) {
 		try {
