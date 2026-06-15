@@ -17,7 +17,7 @@ To use this library add the following Maven dependency:
   <version>0.1.0</version>
 </dependency>
 ```
-See `src/test/java` for examples on how to use this library.
+See `src/test/test` for examples on how to use this library.
 
 To use snapshots versions of this library (if not compiled from sources), please add
 the Sonatype OSSRH snapshot repository either to your `pom.xml` or `settings.xml`:
