@@ -9,9 +9,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,26 +19,19 @@
  * limitations under the License.
  * #L%
  */
-package org.liveontologies.puli;
+package org.liveontologies.puli.pinpointing.input.repairs;
 
-import java.util.Collection;
+import org.liveontologies.puli.pinpointing.BaseAxiomPinpointingTestInput;
+import org.liveontologies.puli.pinpointing.input.Cycle3;
 
-/**
- * An object from which one can retrieve inferences deriving conclusions.
- * 
- * @author Yevgeny Kazakov
- *
- * @param <I>
- *            the type of inferences provided by this proof
- */
-public interface Proof<I extends Inference<?>> {
+public class Cycle3Repairs extends BaseAxiomPinpointingTestInput {
 
-	// TODO: switch to stream
+	@Override
+	protected void build() {
+		input(new Cycle3());
 
-	/**
-	 * @param conclusion
-	 * @return the inferences from this proof that derive the given conclusion
-	 */
-	Collection<? extends I> getInferences(Object conclusion);
+		repair(1, 2);
+		repair(2, 3);
+	}
 
 }
