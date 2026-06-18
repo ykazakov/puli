@@ -21,7 +21,6 @@
  */
 package org.liveontologies.puli.pinpointing;
 
-import java.util.Collection;
 import java.util.Set;
 
 import org.liveontologies.puli.AxiomPinpointingInference;
@@ -41,13 +40,13 @@ public interface AxiomPinpointingTestManifest<Q, A, I extends AxiomPinpointingIn
 	 * @return the set of all justifications for the input or {@code null} if
 	 *         not defined
 	 */
-	Collection<? extends Set<? extends A>> getJustifications();
+	Set<? extends Set<? extends A>> getJustifications();
 
 	/**
 	 * @return the set of all repairs for the input or {@code null} if not
 	 *         defined
 	 */
-	Collection<? extends Set<? extends A>> getRepairs();
+	Set<? extends Set<? extends A>> getRepairs();
 
 	/**
 	 * @return the set of axioms appearing in justifications (and repairs),

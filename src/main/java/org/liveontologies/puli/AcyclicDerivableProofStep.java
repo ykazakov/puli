@@ -21,19 +21,15 @@
  */
 package org.liveontologies.puli;
 
-import java.util.Collections;
-import java.util.Set;
-
-class AcyclicDerivableProofStep<C> extends ConvertedProofStep<C>
-		implements AxiomPinpointingInference<ProofNode<C>, C> {
+class AcyclicDerivableProofStep<C> extends ConvertedProofStep<C> {
 
 	private final AcyclicDerivableProofNode<C> conclusion_;
 
-	private final IncrementalDerivabilityChecker<C, AxiomPinpointingInference<ProofNode<C>, C>> checker_;
+	private final DerivabilityCheckerWithBlocking<ProofNode<?>, ProofStep<?>> checker_;
 
 	AcyclicDerivableProofStep(ProofStep<C> delegate,
 			AcyclicDerivableProofNode<C> conclusion,
-			IncrementalDerivabilityChecker<C, AxiomPinpointingInference<ProofNode<C>, C>> checker) {
+			DerivabilityCheckerWithBlocking<ProofNode<?>, ProofStep<?>> checker) {
 		super(delegate);
 		this.conclusion_ = conclusion;
 		this.checker_ = checker;
@@ -42,11 +38,6 @@ class AcyclicDerivableProofStep<C> extends ConvertedProofStep<C>
 	@Override
 	protected AcyclicDerivableProofNode<C> convert(ProofNode<C> premise) {
 		return new AcyclicDerivableProofNode<C>(premise, conclusion_, checker_);
-	}
-
-	@Override
-	public Set<? extends C> getJustification() {
-		return Collections.singleton(conclusion_.getDelegate().getMember());
 	}
 
 }

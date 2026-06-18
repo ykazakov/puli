@@ -30,7 +30,6 @@ package org.liveontologies.puli;
  * @param <O>
  *            the types of objects that can be produced by this {@link Producer}
  */
-@FunctionalInterface
 public interface Producer<O> {
 
 	void produce(O object);

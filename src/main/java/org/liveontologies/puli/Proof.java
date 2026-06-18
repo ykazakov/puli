@@ -33,8 +33,6 @@ import java.util.Collection;
  */
 public interface Proof<I extends Inference<?>> {
 
-	// TODO: switch to stream
-
 	/**
 	 * @param conclusion
 	 * @return the inferences from this proof that derive the given conclusion

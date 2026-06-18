@@ -77,9 +77,9 @@ public class AxiomPinpointingTestRunner<C, A, I extends AxiomPinpointingInferenc
 	}
 
 	private static <E> void verifyThat(Collection<? extends E> actual,
-			Collection<? extends E> expected) {
+			Set<? extends E> expected) {
 		if (actual != null && expected != null) {
-			assertThat(new HashSet<>(actual), is(equalTo(new HashSet<>(expected))));
+			assertThat(new HashSet<>(actual), is(equalTo(expected)));
 		}
 	}
 

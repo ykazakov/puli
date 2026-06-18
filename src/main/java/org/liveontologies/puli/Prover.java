@@ -32,7 +32,6 @@ package org.liveontologies.puli;
  * @param <I>
  *                the type of inferences that this {@link Prover} may use
  */
-@FunctionalInterface
 public interface Prover<Q, I extends Inference<?>> {
 
 	/**
