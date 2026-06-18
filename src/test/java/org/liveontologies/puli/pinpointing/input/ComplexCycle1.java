@@ -9,9 +9,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,26 +19,20 @@
  * limitations under the License.
  * #L%
  */
-package org.liveontologies.puli;
+package org.liveontologies.puli.pinpointing.input;
 
-import java.util.Collection;
+public class ComplexCycle1 extends BaseEnumeratorTestInput {
 
-/**
- * An object from which one can retrieve inferences deriving conclusions.
- * 
- * @author Yevgeny Kazakov
- *
- * @param <I>
- *            the type of inferences provided by this proof
- */
-public interface Proof<I extends Inference<?>> {
-
-	// TODO: switch to stream
-
-	/**
-	 * @param conclusion
-	 * @return the inferences from this proof that derive the given conclusion
-	 */
-	Collection<? extends I> getInferences(Object conclusion);
+	@Override
+	protected void build() {
+		conclusion("A").premise("B").axiom(1).add();
+		conclusion("A").premise("C").axiom(2).add();
+		conclusion("B").premise("C").axiom(3).add();
+		conclusion("C").axiom(7).add();
+		conclusion("A").premise("E").axiom(8).add();
+		conclusion("E").axiom(1).add();
+		conclusion("B").axiom(8).add();
+		query("A");
+	}
 
 }

@@ -28,12 +28,15 @@ package org.liveontologies.puli;
  * 
  * @author Yevgeny Kazakov
  *
- * @param <C>
- *            the type of conclusions
  * @param <I>
  *            the type of inferences
  */
-public interface DerivabilityChecker<C, I extends Inference<? extends C>> {
+public interface DerivabilityChecker<I extends Inference<?>> {
+
+	/**
+	 * @return the {@link Proof} in which derivability is checked
+	 */
+	public Proof<? extends I> getProof();
 
 	/**
 	 * Checks if a given conclusion is derivable
@@ -43,16 +46,46 @@ public interface DerivabilityChecker<C, I extends Inference<? extends C>> {
 	 * @return {@code true} if conclusion is derivable and {@code false}
 	 *         otherwise
 	 */
-	public boolean isDerivable(C conclusion);
+	public boolean isDerivable(Object conclusion);
 
 	/**
-	 * Computes a derivation for a given conclusion. A derivation is a special
-	 * {@link Proof} in which every conclusion has exactly one inference from
-	 * previously derived conclusions and there are no cycles in inferences
+	 * Returns an acyclic {@link Proof} that can explain why the given
+	 * conclusion is derivable or not.
+	 *
+	 * A {@link Proof} is acyclic if all conclusions can be totally ordered such
+	 * that for each inference returned by {@link Proof#getInferences(Object)}),
+	 * the conclusion of the inference obtained by
+	 * {@link Inference#getConclusion()} is larger in this ordering than all
+	 * premises of the inference obtained by {@link Inference#getPremises()}.
+	 *
+	 * If the given conclusion is derivable, i.e., {@link #isDerivable(Object)}
+	 * returns {@code true}, the returned {@link Proof} can be used to retrieve
+	 * the inferences using which this conclusion can be derived. Specifically,
+	 * {@link Proof#getInferences(Object)} should return a nonempty set of
+	 * inferences for this conclusion, and likewise for every premise of these
+	 * inferences. Since the returned {@link Proof} is acyclic, eventually all
+	 * returned inferences will have no premises.
+	 *
+	 * If the given conclusion is not derivable, i.e.,
+	 * {@link #isDerivable(Object)} returns {@code false}), then the returned
+	 * {@link Proof} can be used to test which conclusions cannot be derived: if
+	 * {@link Proof#getInferences(Object)} returns the empty set for some
+	 * conclusion then for every inference of this conclusion in the original
+	 * {@link #getProof()}, there exists a premise which likewise cannot be
+	 * derived, i.e., {@link Proof#getInferences(Object)} for this premise,
+	 * likewise, returns the empty set. (Note that this, in particular, means
+	 * that every inference of a non-derivable conclusion contains at least one
+	 * premise.)
+	 *
+	 * All inferences returned by the resulting {@link Proof} using
+	 * {@link Proof#getInferences(Object)} must be subsets of inferences
+	 * returned by {@link #getProof()}.
 	 * 
 	 * @param conclusion
 	 * @return the proof consisting of only derivable conclusions
+	 *
+	 * @see Proofs#checkAcyclicity(Proof, Object, java.util.function.Consumer)
 	 */
-	public Proof<I> getDerivation(C conclusion);
+	public Proof<I> explainIsDerivable(Object conclusion);
 
 }

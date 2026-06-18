@@ -21,38 +21,57 @@
  */
 package org.liveontologies.puli;
 
-import com.google.common.base.Preconditions;
+import java.util.Collections;
+import java.util.Set;
 
 class AcyclicDerivableProofNode<C> extends ConvertedProofNode<C> {
 
 	private final AcyclicDerivableProofNode<C> parent_;
 
-	private final DerivabilityCheckerWithBlocking<ProofNode<?>, ProofStep<?>> checker_;
+	private final IncrementalDerivabilityChecker<C, AxiomPinpointingInference<ProofNode<C>, C>> checker_;
 
 	AcyclicDerivableProofNode(ProofNode<C> delegate,
 			AcyclicDerivableProofNode<C> parent,
-			DerivabilityCheckerWithBlocking<ProofNode<?>, ProofStep<?>> checker) {
+			IncrementalDerivabilityChecker<C, AxiomPinpointingInference<ProofNode<C>, C>> checker) {
 		super(delegate);
 		this.parent_ = parent;
 		this.checker_ = checker;
 	}
 
+	AcyclicDerivableProofNode(ProofNode<C> delegate,
+			Proof<AxiomPinpointingInference<ProofNode<C>, C>> proof) {
+		this(delegate, null,
+				new DerivabilityCheckerUP<C, AxiomPinpointingInference<ProofNode<C>, C>>(
+						proof));
+		Proofs.unfoldRecursively(proof, delegate, inf -> {
+			checker_.addAxiom(inf.getConclusion().getMember());
+			return true;
+		});
+	}
+
 	AcyclicDerivableProofNode(ProofNode<C> delegate) {
-		this(delegate, null, new ProofNodeDerivabilityChecker());
+		this(delegate, Proofs.transform(ProofNodes.getProof(delegate),
+				step -> new AxiomPinpointingInferenceAdapter<ProofNode<C>, C>(
+						step) {
+					@Override
+					public Set<? extends C> getJustification() {
+						return Collections
+								.singleton(step.getConclusion().getMember());
+					};
+				}));
 	}
 
 	@Override
 	protected void convertInferences() {
-		Preconditions.checkArgument(checker_.getBlockedConclusions().isEmpty());
 		AcyclicDerivableProofNode<C> blocked = this;
 		do {
-			checker_.block(blocked.getDelegate());
+			checker_.removeAxiom(blocked.getMember());
 			blocked = blocked.parent_;
 		} while (blocked != null);
 		super.convertInferences();
 		blocked = this;
 		do {
-			checker_.unblock(blocked.getDelegate());
+			checker_.addAxiom(blocked.getMember());
 			blocked = blocked.parent_;
 		} while (blocked != null);
 	}
