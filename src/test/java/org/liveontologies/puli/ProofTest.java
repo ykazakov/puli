@@ -24,13 +24,6 @@ package org.liveontologies.puli;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Predicate;
 
 import org.junit.Test;
 
@@ -45,7 +38,7 @@ public class ProofTest {
 
 	@Test
 	public void proofTest() {
-		ProofBuilder<Integer, ?, ?> b = new BaseProofBuilder<>();
+		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
 		b.conclusion(1).premise(2).add();
 		b.conclusion(2).premise(3).premise(4).add();
 		b.conclusion(2).premise(5).premise(6).add();
@@ -56,19 +49,8 @@ public class ProofTest {
 	}
 
 	@Test
-	public void derivabilityTestCycle() throws Exception {
-		ProofBuilder<String, ?, ?> b = new BaseProofBuilder<>();
-		b.conclusion("A").premise("B").add();
-		b.conclusion("A").premise("C").premise("D").add();
-		b.conclusion("C").premise("B").add();
-		b.conclusion("C").add();
-		b.conclusion("B").premise("C").add();
-		assertTrue(Proofs.isDerivable(b.getProof(), "A"));
-	}
-
-	@Test
 	public void blockCyclicProof() throws Exception {
-		ProofBuilder<String, ?, ?> b = new BaseProofBuilder<>();
+		BaseProofBuilder<String, ?> b = new BaseProofBuilder<>();
 		b.conclusion("A ⊑ B").premise("A ⊑ B ⊓ C").add();
 		b.conclusion("A ⊑ B").premise("A ⊑ C").premise("C ⊑ B").add();
 		b.conclusion("A ⊑ C").premise("A ⊑ D").premise("D ⊑ C").add();
@@ -109,156 +91,107 @@ public class ProofTest {
 
 	@Test
 	public void testDerivabilityCheckerWithBlocking0() throws Exception {
-		ProofBuilder<Integer, ?, ?> b = new BaseProofBuilder<>();
+		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
 		b.conclusion(0).premise(1).add();
 		b.conclusion(1).premise(2).add();
 		b.conclusion(11).premise(2).add();
 		b.conclusion(2).add();
-
-		Proof<AxiomPinpointingInference<Integer, Integer>> p = Proofs
-				.transform(b.getProof(), Proofs::justifyByConclusion);
-		IncrementalDerivabilityChecker<Integer, ?> checker = new DerivabilityCheckerUP<>(
+		Proof<? extends Inference<Integer>> p = b.getProof();
+		DerivabilityCheckerWithBlocking<Integer, Inference<Integer>> checker = new InferenceDerivabilityChecker<>(
 				p);
-
-		Set<Integer> axioms = new HashSet<>();
-
-		addAxiom(axioms, checker, 0);
-		addAxiom(axioms, checker, 1);
-		addAxiom(axioms, checker, 11);
-		addAxiom(axioms, checker, 2);
-
-		assertDerivable(checker, 0);
-		removeAxiom(axioms, checker, 2);
-		assertNotDerivable(checker, 0);
-		removeAxiom(axioms, checker, 1);
-		addAxiom(axioms, checker, 2);
-		assertDerivable(checker, 11);
-		assertNotDerivable(checker, 0);
-		addAxiom(axioms, checker, 1);
-		assertDerivable(checker, 0);
+		checker.block(2);
+		assertFalse(checker.isDerivable(0));
+		checker.block(1);
+		checker.unblock(2);
+		assertTrue(checker.isDerivable(11));
+		assertFalse(checker.isDerivable(0));
+		checker.unblock(1);
+		assertTrue(checker.isDerivable(0));
 	}
 
 	@Test
 	public void testDerivabilityCheckerWithBlocking1() throws Exception {
-		ProofBuilder<Integer, ?, ?> b = new BaseProofBuilder<>();
+		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
 		b.conclusion(0).premise(11).premise(22).add();
 		b.conclusion(11).premise(1).add();
 		b.conclusion(22).premise(2).add();
 		b.conclusion(1).add();
 		b.conclusion(2).add();
-
-		Proof<AxiomPinpointingInference<Integer, Integer>> p = Proofs
-				.transform(b.getProof(), Proofs::justifyByConclusion);
-		IncrementalDerivabilityChecker<Integer, ?> checker = new DerivabilityCheckerUP<>(
+		Proof<? extends Inference<Integer>> p = b.getProof();
+		DerivabilityCheckerWithBlocking<Integer, Inference<Integer>> checker = new InferenceDerivabilityChecker<>(
 				p);
-
-		Set<Integer> axioms = new HashSet<>();
-
-		addAxiom(axioms, checker, 0);
-		addAxiom(axioms, checker, 11);
-		addAxiom(axioms, checker, 22);
-		addAxiom(axioms, checker, 1);
-		addAxiom(axioms, checker, 2);
-
-		assertDerivable(checker, 0);
-		removeAxiom(axioms, checker, 2);
-		assertNotDerivable(checker, 0);
-		removeAxiom(axioms, checker, 1);
-		addAxiom(axioms, checker, 2);
-		assertNotDerivable(checker, 0);
-		addAxiom(axioms, checker, 1);
-		assertDerivable(checker, 0);
+		assertTrue(checker.isDerivable(0));
+		checker.block(2);
+		assertFalse(checker.isDerivable(0));
+		checker.block(1);
+		checker.unblock(2);
+		assertFalse(checker.isDerivable(0));
+		checker.unblock(1);
+		assertTrue(checker.isDerivable(0));
 	}
 
 	@Test
 	public void testDerivabilityCheckerWithBlocking2() throws Exception {
-		ProofBuilder<Integer, ?, ?> b = new BaseProofBuilder<>();
+		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
 		b.conclusion(0).premise(1).premise(2).add();
 		b.conclusion(0).premise(3).premise(4).add();
 		b.conclusion(2).premise(0).premise(0).add();
 		b.conclusion(1).premise(3).premise(4).add();
 		b.conclusion(3).add();
 		b.conclusion(4).add();
-
-		Proof<AxiomPinpointingInference<Integer, Integer>> p = Proofs
-				.transform(b.getProof(), Proofs::justifyByConclusion);
-		IncrementalDerivabilityChecker<Integer, ?> checker = new DerivabilityCheckerUP<>(
+		Proof<? extends Inference<Integer>> p = b.getProof();
+		DerivabilityCheckerWithBlocking<Integer, Inference<Integer>> checker = new InferenceDerivabilityChecker<>(
 				p);
-
-		Set<Integer> axioms = new HashSet<>();
-
-		addAxiom(axioms, checker, 0);
-		addAxiom(axioms, checker, 1);
-		addAxiom(axioms, checker, 2);
-		addAxiom(axioms, checker, 3);
-		addAxiom(axioms, checker, 4);
-
-		assertDerivable(checker, 0);
-		removeAxiom(axioms, checker, 1);
-		assertDerivable(checker, 0);
-		addAxiom(axioms, checker, 1);
-		removeAxiom(axioms, checker, 3);
-		assertNotDerivable(checker, 0);
-		assertNotDerivable(checker, 3);
-		assertDerivable(checker, 4);
-		addAxiom(axioms, checker, 3);
-		assertDerivable(checker, 0);
-		assertDerivable(checker, 3);
-		assertDerivable(checker, 4);
-		removeAxiom(axioms, checker, 4);
-		assertNotDerivable(checker, 0);
-		assertDerivable(checker, 3);
-		assertNotDerivable(checker, 4);
+		assertTrue(checker.isDerivable(0));
+		checker.block(1);
+		assertTrue(checker.isDerivable(0));
+		checker.unblock(1);
+		checker.block(3);
+		assertFalse(checker.isDerivable(0));
+		assertFalse(checker.isDerivable(3));
+		assertTrue(checker.isDerivable(4));
+		checker.unblock(3);
+		assertTrue(checker.isDerivable(0));
+		assertTrue(checker.isDerivable(3));
+		assertTrue(checker.isDerivable(4));
+		checker.block(4);
+		assertFalse(checker.isDerivable(0));
+		assertTrue(checker.isDerivable(3));
+		assertFalse(checker.isDerivable(4));
 	}
 
 	@Test
 	public void testDerivabilityCheckerWithBlocking3() throws Exception {
-		ProofBuilder<Integer, ?, ?> b = new BaseProofBuilder<>();
+		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
 		b.conclusion(0).premise(1).add();
 		b.conclusion(0).premise(2).add();
 		b.conclusion(1).add();
 		b.conclusion(2).add();
-
-		Proof<AxiomPinpointingInference<Integer, Integer>> p = Proofs
-				.transform(b.getProof(), Proofs::justifyByConclusion);
-		IncrementalDerivabilityChecker<Integer, ?> checker = new DerivabilityCheckerUP<>(
+		Proof<? extends Inference<Integer>> p = b.getProof();
+		DerivabilityCheckerWithBlocking<Integer, Inference<Integer>> checker = new InferenceDerivabilityChecker<>(
 				p);
-
-		Set<Integer> axioms = new HashSet<>();
-
-		addAxiom(axioms, checker, 0);
-		addAxiom(axioms, checker, 1);
-		addAxiom(axioms, checker, 2);
-
-		removeAxiom(axioms, checker, 1);
-		assertDerivable(checker, 0);
-		addAxiom(axioms, checker, 1);
-		removeAxiom(axioms, checker, 2);
-		assertDerivable(checker, 0);
-		removeAxiom(axioms, checker, 1);
-		assertNotDerivable(checker, 0);
-		addAxiom(axioms, checker, 1);
-		addAxiom(axioms, checker, 2);
-		assertDerivable(checker, 0);
+		checker.block(1);
+		assertTrue(checker.isDerivable(0));
+		checker.unblock(1);
+		checker.block(2);
+		assertTrue(checker.isDerivable(0));
+		checker.block(1);
+		assertFalse(checker.isDerivable(0));
+		checker.unblock(1);
+		checker.unblock(2);
+		assertTrue(checker.isDerivable(0));
 	}
 
 	@Test
 	public void testDerivabilityCheckerWithBlocking4() throws Exception {
-		ProofBuilder<Integer, ?, ?> b = new BaseProofBuilder<>();
-
+		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
 		b.conclusion(0).premise(1).add();
 		b.conclusion(1).premise(0).add();
 		b.conclusion(0).add();
-
-		Proof<AxiomPinpointingInference<Integer, Integer>> p = Proofs
-				.transform(b.getProof(), Proofs::justifyByConclusion);
-		IncrementalDerivabilityChecker<Integer, ?> checker = new DerivabilityCheckerUP<>(
+		Proof<? extends Inference<Integer>> p = b.getProof();
+		DerivabilityCheckerWithBlocking<Integer, Inference<Integer>> checker = new InferenceDerivabilityChecker<>(
 				p);
-
-		checker.addAxiom(0);
-		checker.addAxiom(1);
-
-		assertDerivable(checker, 0);
+		assertTrue(checker.isDerivable(0));
 	}
 
 	@Test
@@ -279,11 +212,6 @@ public class ProofTest {
 		// everything is derivable
 		assertEquals(2,
 				ProofNodes.eliminateNotDerivable(root).getInferences().size());
-
-		assertTrue(ProofNodes.isDerivable(root));
-
-		assertTrue(ProofNodes
-				.isDerivable(ProofNodes.eliminateNotDerivableAndCycles(root)));
 
 		// only one inference remains since the other is cyclic
 		assertEquals(1, ProofNodes.eliminateNotDerivableAndCycles(root)
@@ -334,93 +262,6 @@ public class ProofTest {
 		assertEquals(1,
 				ProofNodes.eliminateNotDerivable(root).getInferences().size());
 
-	}
-
-	public static <I extends Inference<?>> void assertDerivation(Proof<I> proof,
-			Object goal) {
-		Object[] last = { null };
-		Set<Object> cycle = Proofs.checkAcyclicity(proof, goal, c -> {
-			last[0] = c;
-		});
-		if (cycle != null) {
-			int size = cycle.size();
-			List<I> inferenceCycle = new ArrayList<>(size);
-			Object next = goal;
-			main_loop: for (int i = 0; i < size; i++) {
-				for (I inf : proof.getInferences(next)) {
-					for (Object c : inf.getPremises()) {
-						if (cycle.contains(c)) {
-							inferenceCycle.add(inf);
-							next = c;
-							continue main_loop;
-						}
-					}
-				}
-			}
-			fail("Cyclic proof: " + inferenceCycle);
-		}
-		assertEquals("Not derived: " + goal, last[0], goal);
-	}
-
-	static void assertDerivable(DerivabilityChecker<?> checker, Object goal) {
-		assertTrue(checker.isDerivable(goal));
-		assertDerivation(checker.explainIsDerivable(goal), goal);
-	}
-
-	public static <A> void assertNotDerivable(DerivabilityChecker<?> checker,
-			Object goal) {
-		assertFalse(checker.isDerivable(goal));
-		Proof<?> explanation = checker.explainIsDerivable(goal);
-		// remove inferences whose conclusion are derivable
-		Proof<?> filtered = Proofs.filter(checker.getProof(),
-				inf -> !explanation.getInferences(inf.getConclusion())
-						.isEmpty());
-		// check that at least one premise of the remaining inferences is not
-		// derivable
-		Proofs.unfoldRecursively(filtered, goal, inf -> {
-			if (!inf.getPremises().stream()
-					.anyMatch(c -> explanation.getInferences(c).isEmpty())) {
-				fail("All premises of inferences are derivable but the conclusion is not: "
-						+ inf);
-			}
-			return false;
-		});
-	}
-
-	private static <A> void addAxiom(Set<A> axioms,
-			IncrementalDerivabilityChecker<A, ? extends AxiomPinpointingInference<?, ? extends A>> checker,
-			A axiom) {
-		axioms.add(axiom);
-		checker.addAxiom(axiom);
-		assertJustified(checker.getProof(), axiom, axioms::contains);
-	}
-
-	private static <A> void removeAxiom(Set<A> axioms,
-			IncrementalDerivabilityChecker<A, ? extends AxiomPinpointingInference<?, ? extends A>> checker,
-			A axiom) {
-		axioms.remove(axiom);
-		checker.removeAxiom(axiom);
-		assertJustified(checker.getProof(), axiom, axioms::contains);
-	}
-
-	public static <A> void assertJustified(
-			Proof<? extends AxiomPinpointingInference<?, ? extends A>> proof,
-			Object goal, Predicate<A> isAxiom) {
-		Proofs.unfoldRecursively(proof, goal, inf -> {
-			inf.getJustification()
-					.forEach(ax -> assertTrue("Inference " + inf
-							+ " uses invalid justification " + ax,
-							isAxiom.test(ax)));
-			return true;
-		});
-	}
-
-	public static <A> void assertDerivable(
-			IncrementalDerivabilityChecker<?, ? extends AxiomPinpointingInference<?, ? extends A>> checker,
-			Object goal, Predicate<A> isAxiom) {
-		assertDerivable(checker, goal);
-		Proof<? extends AxiomPinpointingInference<?, ? extends A>> proof = checker.explainIsDerivable(goal);
-		assertJustified(proof, goal, isAxiom);
 	}
 
 }

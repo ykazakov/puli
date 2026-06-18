@@ -21,8 +21,6 @@
  */
 package org.liveontologies.puli;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -57,24 +55,6 @@ public class ProofNodes {
 	public static <C> ProofNode<C> create(
 			Proof<? extends Inference<? extends C>> proof, C member) {
 		return new BaseProofNode<C>(proof, member);
-	}
-
-	public static <C> Proof<? extends Inference<? extends ProofNode<C>>> getProof(
-			ProofNode<C> node) {
-		return new Proof<ProofStep<C>>() {
-
-			@SuppressWarnings("unchecked")
-			@Override
-			public Collection<? extends ProofStep<C>> getInferences(
-					Object conclusion) {
-				if (conclusion instanceof ProofNode<?>) {
-					return ((ProofNode<C>) conclusion).getInferences();
-				}
-				// else
-				return Collections.emptySet();
-			}
-
-		};
 	}
 
 	/**
@@ -134,7 +114,7 @@ public class ProofNodes {
 	 *         {@code false} otherwise
 	 */
 	public static <C> boolean isDerivable(ProofNode<C> node) {
-		return Proofs.isDerivable(ProofNodeProof.get(), node);
+		return new ProofNodeDerivabilityChecker().isDerivable(node);
 	}
 
 	/**
@@ -184,12 +164,12 @@ public class ProofNodes {
 	 * For example, if an input node n1 has inferences n1 -| n2 (conclusion: n1,
 	 * premise: n2), node n2 has only inferences n2 -| n3 (conclusion: n2,
 	 * premise n3), and n3 has only inferences n3 -| n1, n4 (conclusion: n3,
-	 * premises n1 and n4) and n3 -| (conclusion: n3, no premise), then the
-	 * resulting node n1' will have only inference n1' -| n2' where n2' has only
-	 * inference n2' -| n3', where n3' has only inference n3' -|, n1', n2', and
-	 * n2' has the same member as n1, n2, and n3 respectively. That is, the
-	 * inference corresponding to n3 -| n1, n4 was removed because it is cyclic
-	 * (uses n1 as a premise).
+	 * premise n1) and n3 -| (conclusion: n3, no premise), then the resulting
+	 * node n1' will have only inference n1' -| n2' where n2' has only inference
+	 * n2' -| n3', where n3' has only inference n3' -|, n1', n2', and n2' has
+	 * the same member as n1, n2, and n3 respectively. That is, the inference
+	 * corresponding to n3 -| n1, n4 was removed because it is cyclic (uses n1
+	 * as a premise).
 	 * 
 	 * @param node
 	 * @return {@code null} if the given {@link ProofNode} is not derivable or

@@ -9,9 +9,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,26 +22,21 @@
 package org.liveontologies.puli;
 
 import java.util.Collection;
+import java.util.Set;
 
 import com.google.common.base.Preconditions;
 
-class DerivableProofNode<C> extends ConvertedProofNode<C> {
+class DerivableFromProofNode<C> extends DerivableProofNode<C> {
 
-	private final DerivabilityChecker<ProofNode<?>, ProofStep<?>> checker_;
-
-	DerivableProofNode(ProofNode<C> delegate,
+	DerivableFromProofNode(ProofNode<C> delegate,
 			DerivabilityChecker<ProofNode<?>, ProofStep<?>> checker) {
-		super(delegate);
-		Preconditions.checkNotNull(checker);
-		this.checker_ = checker;
+		super(delegate, checker);
 	}
 
-	DerivableProofNode(ProofNode<C> delegate) {
-		this(delegate, new ProofNodeDerivabilityChecker());
-	}
-
-	DerivabilityChecker<ProofNode<?>, ProofStep<?>> getDerivabilityChecker() {
-		return checker_;
+	DerivableFromProofNode(ProofNode<C> delegate,
+			Set<? extends C> statedAxioms) {
+		this(new AddAssertedProofNode<C>(delegate, statedAxioms),
+				new ProofNodeDerivabilityChecker());
 	}
 
 	@Override
@@ -52,17 +47,17 @@ class DerivableProofNode<C> extends ConvertedProofNode<C> {
 	}
 
 	@Override
-	protected final void convert(ConvertedProofStep<C> step) {
+	final void convert(DerivableProofStep<C> step) {
 		ProofStep<C> delegate = step.getDelegate();
-		for (ProofNode<C> premise : delegate.getPremises()) {
-			if (!checker_.isDerivable(premise)) {
-				return;
-			}
+		if (Inferences.isAsserted(delegate)) {
+			return;
 		}
-		convert(new DerivableProofStep<C>(delegate, checker_));
+		// else
+		convert(new DerivableFromProofStep<C>(delegate,
+				getDerivabilityChecker()));
 	}
 
-	void convert(DerivableProofStep<C> step) {
+	void convert(DerivableFromProofStep<C> step) {
 		super.convert(step);
 	}
 
