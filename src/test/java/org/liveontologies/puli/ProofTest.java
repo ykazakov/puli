@@ -181,7 +181,7 @@ public class ProofTest {
 		checker.unblock(2);
 		assertTrue(checker.isDerivable(0));
 	}
-	
+
 	@Test
 	public void testDerivabilityCheckerWithBlocking4() throws Exception {
 		BaseProofBuilder<Integer, ?> b = new BaseProofBuilder<>();
@@ -191,7 +191,7 @@ public class ProofTest {
 		Proof<? extends Inference<Integer>> p = b.getProof();
 		DerivabilityCheckerWithBlocking<Integer, Inference<Integer>> checker = new InferenceDerivabilityChecker<>(
 				p);
-		assertTrue(checker.isDerivable(0));		
+		assertTrue(checker.isDerivable(0));
 	}
 
 	@Test
